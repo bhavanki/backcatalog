@@ -17,9 +17,14 @@ install() {
     curl -O "${GH_REPO}/demote"
     chmod +x demote
   fi
+  if [[ ! -x setup_backcatalog.sh ]]; then
+    echo "Downloading setup_backcatalog.sh ..."
+    curl -o setup_backcatalog.sh "${GH_REPO}/setup.sh"
+    chmod +x setup_backcatalog.sh
+  fi
 
   echo "Installation complete!"
-  echo "Run setup.sh to set up backcatalog"
+  echo "Run setup_backcatalog.sh to set up backcatalog"
 }
 
 install

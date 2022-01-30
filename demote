@@ -1,0 +1,92 @@
+#!/bin/bash
+
+CONFIG_FILE=$HOME/.config/backcatalog.sh
+if [[ ! -e $CONFIG_FILE ]]; then
+  echo "Configuration file $CONFIG_FILE missing!"
+  exit 1
+fi
+source "$CONFIG_FILE"
+
+available_systems() {
+  echo "Available systems:"
+  find "$1" -mindepth 1 -maxdepth 1 -type d -print | \
+     sed "s@$1/@- @g" | sort
+}
+
+usage() {
+  cat << EOF
+usage: $0 options system [romfile ...]
+
+OPTIONS:
+  -h    Shows this help message
+
+$(available_systems "$romdir")
+EOF
+}
+
+while getopts "nh" opt
+do
+  case $opt in
+    h)
+      usage
+      exit 0
+      ;;
+    ?)
+      usage
+      exit
+      ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+if (( $# == 0 )); then
+  usage
+  exit
+fi
+
+system=$1
+shift
+if [[ ! -d "$romdir/$system" ]]; then
+  echo "Invalid system $system"
+  available_systems "$romdir"
+  exit 1
+fi
+
+echo "Demoting ROMs for ${system} to ${bcdir}"
+srcdir=$romdir/$system
+dstdir=$bcdir/$system
+
+roms=()
+if (( $# == 0 )); then
+  if ! hash fzf 2>/dev/null; then
+    echo "No ROMs specified, nothing to do"
+    exit
+  fi
+  selected_rom=$(ls "$srcdir" | fzf)
+  if [[ -z $selected_rom ]]; then
+    echo "No ROM selected, nothing to do"
+    exit
+  fi
+  roms+=( "$selected_rom" )
+else
+  roms=( "$@" )
+fi
+for f in "${roms[@]}"; do
+  rompath="$srcdir/$f"
+  if [[ ! -e "$rompath" ]]; then
+    echo "ROM file $f not in $srcdir"
+    exit 2
+  fi
+  romname=$(basename "$rompath")
+  if [[ ! -f "${dstdir}/${romname}" ]]; then
+    echo "ROM file $f not already present in $dstdir"
+    exit 3
+  fi
+  if [[ ! -h "$rompath" ]]; then
+    echo "ROM file $f is not a symlink, leaving in place"
+    exit 4
+  fi
+  rm "$rompath"
+  echo "Demoted $f"
+done
+

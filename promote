@@ -1,0 +1,104 @@
+#!/bin/bash
+
+CONFIG_FILE=$HOME/.config/backcatalog.sh
+if [[ ! -e $CONFIG_FILE ]]; then
+  echo "Configuration file $CONFIG_FILE missing!"
+  exit 1
+fi
+source "$CONFIG_FILE"
+
+available_systems() {
+  echo "Available systems:"
+  find "$1" -mindepth 1 -maxdepth 1 -type d -print | \
+     sed "s@$1/@- @g" | sort
+}
+
+usage() {
+  cat << EOF
+usage: $0 options system [romfile ...]
+
+OPTIONS:
+  -b    Browse backcatalog for matches to romfile instead
+  -h    Shows this help message
+
+$(available_systems "$bcdir")
+EOF
+}
+
+while getopts "bnh" opt
+do
+  case $opt in
+    b)
+      BROWSE=1
+      ;;
+    h)
+      usage
+      exit 0
+      ;;
+    ?)
+      usage
+      exit
+      ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+if (( $# == 0 )); then
+  usage
+  exit
+fi
+
+system=$1
+shift
+if [[ ! -d "$bcdir/$system" ]]; then
+  echo "Invalid system $system"
+  available_systems "$bcdir"
+  exit 1
+fi
+
+if [[ -n $BROWSE ]]; then
+  echo "Browing ROMS for ${system}"
+  rompath="$bcdir/$system"
+  if (( $# > 0 )); then
+    echo "... containing $1"
+    ls "$rompath"/*"$1"*
+  else
+    ls "$rompath"
+  fi
+  exit
+fi
+
+echo "Promoting ROMs for ${system} to ${romdir}"
+srcdir=$bcdir/$system
+dstdir=$romdir/$system
+mkdir -p "$dstdir"
+
+roms=()
+if (( $# == 0 )); then
+  if ! hash fzf 2>/dev/null; then
+    echo "No ROMs specified, nothing to do"
+    exit
+  fi
+  selected_rom=$(ls "$srcdir" | fzf)
+  if [[ -z $selected_rom ]]; then
+    echo "No ROM selected, nothing to do"
+    exit
+  fi
+  roms+=( "$selected_rom" )
+else
+  roms=( "$@" )
+fi
+for f in "${roms[@]}"; do
+  rompath="$srcdir/$f"
+  if [[ ! -e "$rompath" ]]; then
+    echo "ROM file $f not in $srcdir"
+    exit 2
+  fi
+  if [[ -e "${dstdir}/${f}" ]]; then
+    echo "File $f is already promoted, skipping"
+  else
+    romname=$(basename "$rompath")
+    ln -s "$rompath" "$dstdir"/"$romname"
+    echo "Promoted $f to $dstdir"
+  fi
+done

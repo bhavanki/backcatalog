@@ -34,6 +34,7 @@ setup() {
   get_dir "RetroPie home directory" RPDIR "$HOME/RetroPie" 1
   get_dir "ROM directory" ROMDIR "$RPDIR/roms" 1
   get_dir "top-level backcatalog directory" BCTOPDIR "$RPDIR/backcatalog" ""
+  echo
 
   # Find or create the backcatalog roms directory.
   ROMS_BASENAME=$(basename "$ROMDIR")
@@ -60,7 +61,7 @@ EOF
 
   # Move ROMs if necessary.
   if [[ -n $MOVE_ROMS ]]; then
-    find "$ROMDIR" -type d -mindepth 1 -maxdepth 1
+    echo
 
     while IFS= read -r -d '' d; do
       echo "Moving ROM system dir $d to backcatalog"
@@ -75,7 +76,7 @@ EOF
     echo "Leaving ROMs in place"
   fi
 
-  echo "Setup complete"
+  echo "Setup complete!"
 }
 
 setup
